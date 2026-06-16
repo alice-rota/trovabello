@@ -33,7 +33,13 @@
       "Bash(git -c 'user.name=Alice Rota' -c user.email=alice.rota@ask-it.ai commit -q -m 'Favoris, commentaires, fiche détaillée en pop-up, sélecteur pays *)",
       "Bash(gh repo *)",
       "Bash(git -c 'user.name=Alice Rota' -c user.email=alice.rota@ask-it.ai commit -q -m 'Résolution robuste de l'\\\\''URL base \\(Neon/Vercel\\) *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel teams *)",
+      "Bash(vercel link *)",
+      "Bash(vercel project *)",
+      "Bash(yes)",
+      "Bash(git -c 'user.name=Alice Rota' -c user.email=alice.rota@ask-it.ai commit -q -m 'Création auto des tables au build Vercel \\(prisma db push\\) *)"
     ]
   }
 }
