@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { enrichVenue } from "@/lib/enrich";
 import { factsToUpdate } from "@/lib/apply";
 import { missingEssentials } from "@/lib/schema";
+import { CATEGORY_LABEL } from "@/lib/categories";
 
 export const maxDuration = 60;
 
@@ -20,12 +21,10 @@ export async function POST(
       name: venue.name,
       website: venue.website,
       country: venue.country,
+      categoryLabel: CATEGORY_LABEL[venue.category],
     });
     const missing = missingEssentials({
-      capacitySeated: facts.capacitySeated ?? venue.capacitySeated,
-      priceVenue: facts.priceVenue ?? venue.priceVenue,
-      pricePerNightPerGuest: facts.pricePerNightPerGuest ?? venue.pricePerNightPerGuest,
-      catererType: facts.catererType ?? venue.catererType,
+      price: facts.price ?? venue.price,
       availabilityNotes: facts.availabilityNotes ?? venue.availabilityNotes,
     });
     const updated = await prisma.venue.update({

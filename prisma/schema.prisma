@@ -30,13 +30,49 @@ enum CatererType {
   UNKNOWN
 }
 
+// Catégorie de prestation (planner complet)
+enum Category {
+  LIEU
+  CEREMONIE
+  HEBERGEMENT
+  TRAITEUR
+  BOISSONS
+  GATEAU
+  LOCATION
+  PHOTOGRAPHE
+  VIDEASTE
+  MUSIQUE
+  FLEURISTE
+  DECORATION
+  PLANNER
+  OFFICIANT
+  ROBE
+  COSTUME
+  COIFFURE
+  MAQUILLAGE
+  ALLIANCES
+  ACCESSOIRES
+  PAPETERIE
+  SITE_INVITES
+  CADEAUX
+  ANIMATION
+  TRANSPORT
+  ENFANTS
+  LUNE_DE_MIEL
+  AUTRE
+}
+
 model Venue {
   id          String      @id @default(cuid())
   name        String
+  category    Category    @default(LIEU)
   website     String?
   country     Country     @default(FR)
   region      String? // région / ville
   status      VenueStatus @default(PENDING)
+
+  // Prix générique de la prestation (EUR) — base du budget global
+  price Int?
 
   // Contact
   contactName  String?

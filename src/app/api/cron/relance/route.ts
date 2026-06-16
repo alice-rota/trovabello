@@ -25,10 +25,7 @@ export async function GET(req: Request) {
   let relances = 0;
   for (const v of venues) {
     const missing = missingEssentials({
-      capacitySeated: v.capacitySeated,
-      priceVenue: v.priceVenue,
-      pricePerNightPerGuest: v.pricePerNightPerGuest,
-      catererType: v.catererType,
+      price: v.price,
       availabilityNotes: v.availabilityNotes,
     });
     const r = await sendInfoRequest({

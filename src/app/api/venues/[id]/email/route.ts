@@ -20,10 +20,7 @@ export async function POST(
     );
 
   const missing = missingEssentials({
-    capacitySeated: venue.capacitySeated,
-    priceVenue: venue.priceVenue,
-    pricePerNightPerGuest: venue.pricePerNightPerGuest,
-    catererType: venue.catererType,
+    price: venue.price,
     availabilityNotes: venue.availabilityNotes,
   });
 

@@ -53,16 +53,12 @@ export async function POST(req: Request) {
   // 3. Analyser la réponse et compléter la fiche
   try {
     const facts = await parseEmailReply(text, {
+      price: venue.price ?? undefined,
       capacitySeated: venue.capacitySeated ?? undefined,
-      priceVenue: venue.priceVenue ?? undefined,
-      pricePerNightPerGuest: venue.pricePerNightPerGuest ?? undefined,
       catererPricePerGuest: venue.catererPricePerGuest ?? undefined,
     });
     const missing = missingEssentials({
-      capacitySeated: facts.capacitySeated ?? venue.capacitySeated,
-      priceVenue: facts.priceVenue ?? venue.priceVenue,
-      pricePerNightPerGuest: facts.pricePerNightPerGuest ?? venue.pricePerNightPerGuest,
-      catererType: facts.catererType ?? venue.catererType,
+      price: facts.price ?? venue.price,
       availabilityNotes: facts.availabilityNotes ?? venue.availabilityNotes,
     });
     await prisma.venue.update({

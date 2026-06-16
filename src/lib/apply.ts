@@ -17,6 +17,7 @@ export function factsToUpdate(facts: VenueFacts): Prisma.VenueUpdateInput {
   set("region", facts.region);
   set("country", facts.country);
   set("photoUrl", facts.photoUrl);
+  set("price", facts.price);
   set("capacitySeated", facts.capacitySeated);
   set("capacityStanding", facts.capacityStanding);
   set("beds", facts.beds);

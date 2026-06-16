@@ -52,6 +52,7 @@ export type EnrichInput = {
   name: string;
   website?: string | null;
   country?: "FR" | "IT" | null;
+  categoryLabel?: string; // ex: "Photographe", "Fleuriste", "Lieu"
 };
 
 // Enrichit une fiche domaine : lit le site web s'il est fourni, puis
@@ -60,10 +61,12 @@ export async function enrichVenue(input: EnrichInput): Promise<VenueFacts> {
   const pageText = input.website ? await fetchPageText(input.website) : "";
   const ogImage = input.website ? await fetchOgImage(input.website) : null;
 
+  const cat = input.categoryLabel ?? "prestataire de mariage";
   const prompt = [
-    `Tu aides à comparer des domaines pour un mariage (France 🇫🇷 et Italie 🇮🇹).`,
-    `Voici un domaine à analyser :`,
+    `Tu aides à organiser un mariage en comparant des prestataires (France et Italie).`,
+    `Voici un(e) ${cat} à analyser :`,
     `- Nom : ${input.name}`,
+    `- Type de prestation : ${cat}`,
     input.website ? `- Site web : ${input.website}` : `- Site web : inconnu`,
     input.country ? `- Pays indiqué : ${input.country}` : "",
     "",

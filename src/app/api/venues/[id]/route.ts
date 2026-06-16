@@ -36,7 +36,7 @@ export async function PATCH(
 
   // Liste blanche des champs éditables à la main
   const allowed = [
-    "name", "website", "country", "region", "status",
+    "name", "category", "price", "website", "country", "region", "status",
     "contactName", "contactEmail", "contactPhone", "photoUrl",
     "capacitySeated", "capacityStanding", "beds",
     "priceVenue", "pricePerNightPerGuest", "catererType",

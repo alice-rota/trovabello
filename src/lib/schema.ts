@@ -15,7 +15,14 @@ export const VenueFactsSchema = z.object({
   photoUrl: z
     .string()
     .nullish()
-    .describe("URL d'une photo représentative du domaine"),
+    .describe("URL d'une photo représentative"),
+  price: z
+    .number()
+    .int()
+    .nullish()
+    .describe(
+      "Prix indicatif de la prestation en EUR (forfait, à partir de…). Pour un lieu, le tarif principal de location.",
+    ),
   capacitySeated: z
     .number()
     .int()
@@ -75,13 +82,10 @@ export const VenueFactsSchema = z.object({
 
 export type VenueFacts = z.infer<typeof VenueFactsSchema>;
 
-// Champs considérés "essentiels" pour la comparaison - s'ils manquent,
-// on déclenche un email au domaine.
+// Champs essentiels génériques - s'ils manquent, on propose un email au
+// prestataire. (Le lieu a quelques champs en plus, gérés à part.)
 export const ESSENTIAL_FIELDS: (keyof VenueFacts)[] = [
-  "capacitySeated",
-  "priceVenue",
-  "pricePerNightPerGuest",
-  "catererType",
+  "price",
   "availabilityNotes",
 ];
 
@@ -94,6 +98,7 @@ export function missingEssentials(facts: Partial<VenueFacts>): string[] {
 
 // Libellés FR des champs, pour les emails et l'UI
 export const FIELD_LABELS: Record<string, string> = {
+  price: "Tarif / forfait de la prestation",
   capacitySeated: "Capacité (invités assis au dîner)",
   capacityStanding: "Capacité debout / cocktail",
   beds: "Nombre de couchages sur place",

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { enrichVenue } from "@/lib/enrich";
 import { factsToUpdate } from "@/lib/apply";
 import { missingEssentials } from "@/lib/schema";
+import { CATEGORY_LABEL } from "@/lib/categories";
 import { DEMO_VENUES } from "@/lib/demo";
 
 export const maxDuration = 60;
@@ -26,13 +27,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const name = (body.name ?? "").trim();
   if (!name) {
-    return NextResponse.json({ error: "Le nom du domaine est requis" }, { status: 400 });
+    return NextResponse.json({ error: "Le nom est requis" }, { status: 400 });
   }
+  const category = CATEGORY_LABEL[body.category] ? body.category : "LIEU";
 
   // 1. Création immédiate
   const venue = await prisma.venue.create({
     data: {
       name,
+      category,
       website: body.website?.trim() || null,
       country: body.country === "IT" ? "IT" : "FR",
       contactName: body.contactName?.trim() || null,
@@ -48,13 +51,11 @@ export async function POST(req: Request) {
       name: venue.name,
       website: venue.website,
       country: venue.country,
+      categoryLabel: CATEGORY_LABEL[category],
     });
     const update = factsToUpdate(facts);
     const missing = missingEssentials({
-      capacitySeated: facts.capacitySeated,
-      priceVenue: facts.priceVenue,
-      pricePerNightPerGuest: facts.pricePerNightPerGuest,
-      catererType: facts.catererType,
+      price: facts.price,
       availabilityNotes: facts.availabilityNotes,
     });
     const updated = await prisma.venue.update({
