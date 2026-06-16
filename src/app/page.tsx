@@ -530,20 +530,30 @@ function VenueCard({
 }) {
   const s = STATUS_LABEL[v.status];
   const venueLike = isVenueLike(v.category);
-  const badge = `${CATEGORY_LABEL[v.category]} · ${v.country === "IT" ? "Italie" : "France"}`;
+  const facts: string[] = [];
+  if (venueLike) {
+    if (v.capacitySeated) facts.push(`${v.capacitySeated} invités`);
+    if (v.beds) facts.push(`${v.beds} couchages`);
+    if (v.catererType && v.catererType !== "UNKNOWN")
+      facts.push(`traiteur ${CATERER_LABEL[v.catererType].toLowerCase()}`);
+  }
 
   return (
     <div
       onClick={onOpen}
-      className="rounded-xl border border-ink/15 overflow-hidden flex flex-col bg-paper cursor-pointer hover:border-ink/30 hover:shadow-sm transition"
+      className="group rounded-2xl border border-ink/12 overflow-hidden flex flex-col bg-paper cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 hover:border-ink/25"
     >
-      <div className="h-44 bg-paper-soft relative">
+      <div className="h-40 bg-paper-soft relative overflow-hidden">
         {v.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={v.photoUrl} alt={v.name} className="h-full w-full object-cover sepia-[.12] saturate-[.85]" />
+          <img
+            src={v.photoUrl}
+            alt={v.name}
+            className="h-full w-full object-cover sepia-[.1] saturate-[.9] transition duration-300 group-hover:scale-[1.03]"
+          />
         ) : (
-          <div className="h-full w-full flex items-center justify-center text-ink/25 text-sm">
-            Pas de photo
+          <div className="h-full w-full flex items-center justify-center text-ink/20 text-xs uppercase tracking-wide">
+            Sans photo
           </div>
         )}
         <span className={`absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full ${s.color}`}>
@@ -561,32 +571,24 @@ function VenueCard({
             {v.isFavorite ? "★" : "☆"}
           </span>
         </button>
-        <span className="absolute bottom-3 left-3 text-xs px-2.5 py-1 rounded-full bg-paper text-ink/70 border border-ink/15">
-          {badge}
-        </span>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="text-lg font-hand text-ink leading-tight">{v.name}</h3>
+      <div className="p-4 flex-1 flex flex-col">
+        <p className="text-[11px] uppercase tracking-wide text-wine/70 font-medium">
+          {CATEGORY_LABEL[v.category]} · {v.country === "IT" ? "Italie" : "France"}
+        </p>
+        <h3 className="text-lg font-hand text-ink leading-tight mt-0.5">{v.name}</h3>
         <p className="text-sm text-ink/40">{v.region ?? "Région inconnue"}</p>
-
-        {venueLike && (
-          <dl className="mt-4 grid grid-cols-2 gap-y-3 text-sm">
-            <Fact label="Capacité" value={v.capacitySeated ? `${v.capacitySeated} pers.` : "-"} />
-            <Fact label="Couchages" value={v.beds ? `${v.beds}` : "-"} />
-            <Fact label="Traiteur" value={CATERER_LABEL[v.catererType]} />
-            <Fact label="Nuit / pers." value={eur(v.pricePerNightPerGuest)} />
-          </dl>
+        {facts.length > 0 && (
+          <p className="mt-2 text-xs text-ink/50">{facts.join(" · ")}</p>
         )}
-
-        <div className="mt-4 rounded-lg border border-ink/15 bg-paper-soft/50 p-4 text-center">
-          <p className="text-[11px] uppercase tracking-wide text-ink/40">Prix</p>
-          <p className="text-2xl font-semibold text-wine mt-0.5">
+        <div className="flex-1" />
+        <div className="mt-3 pt-3 border-t border-ink/10 flex items-baseline justify-between">
+          <span className="text-[11px] uppercase tracking-wide text-ink/40">Prix</span>
+          <span className="text-xl font-semibold text-wine">
             {v.price != null ? eur(v.price) : "à compléter"}
-          </p>
+          </span>
         </div>
-
-        <p className="mt-4 text-sm font-medium text-wine">Voir la fiche →</p>
       </div>
     </div>
   );
