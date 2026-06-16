@@ -33,3 +33,18 @@ export function eur(n: number | null | undefined): string {
     maximumFractionDigits: 0,
   }).format(n);
 }
+
+// Image d'une fiche : la photo si elle existe, sinon une capture d'écran du
+// site web (service gratuit mShots), sinon null (placeholder).
+export function previewImage(
+  photoUrl?: string | null,
+  website?: string | null,
+): string | null {
+  if (photoUrl) return photoUrl;
+  if (website && website.trim()) {
+    let url = website.trim();
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(url)}?w=800`;
+  }
+  return null;
+}

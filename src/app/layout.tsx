@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import Donna from "@/components/Donna";
 
 // Corps de texte : Montserrat
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-sans" });
@@ -27,7 +28,10 @@ export default function RootLayout({
       lang="fr"
       className={`${montserrat.variable} ${providence.variable} h-full`}
     >
-      <body className="min-h-full antialiased">{children}</body>
+      <body className="min-h-full antialiased">
+        {children}
+        <Donna />
+      </body>
     </html>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { STATUS_LABEL, CATERER_LABEL, eur } from "@/lib/format";
+import { STATUS_LABEL, CATERER_LABEL, eur, previewImage } from "@/lib/format";
 import {
   CATEGORIES,
   CATEGORY_LABEL,
@@ -514,6 +514,7 @@ function VenueCard({
 }) {
   const s = STATUS_LABEL[v.status];
   const venueLike = isVenueLike(v.category);
+  const img = previewImage(v.photoUrl, v.website);
   const facts: string[] = [];
   if (venueLike) {
     if (v.capacitySeated) facts.push(`${v.capacitySeated} invités`);
@@ -528,12 +529,13 @@ function VenueCard({
       className="group rounded-2xl border border-ink/12 overflow-hidden flex flex-col bg-paper cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 hover:border-ink/25"
     >
       <div className="h-40 bg-paper-soft relative overflow-hidden">
-        {v.photoUrl ? (
+        {img ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={v.photoUrl}
+            src={img}
             alt={v.name}
-            className="h-full w-full object-cover sepia-[.1] saturate-[.9] transition duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+            className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-ink/20 text-xs uppercase tracking-wide">
@@ -721,6 +723,7 @@ function VenueModal({
   const sent = emails.some((e) => e.direction === "OUTBOUND");
   const replied = emails.some((e) => e.direction === "INBOUND");
   const venueLike = v ? isVenueLike(v.category) : false;
+  const heroImg = v ? previewImage(v.photoUrl, v.website) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6">
@@ -739,9 +742,9 @@ function VenueModal({
         ) : (
           <>
             <div className="h-48 bg-paper-soft relative">
-              {v.photoUrl ? (
+              {heroImg ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={v.photoUrl} alt={v.name} className="h-full w-full object-cover sepia-[.12] saturate-[.85]" />
+                <img src={heroImg} alt={v.name} className="h-full w-full object-cover object-top" />
               ) : (
                 <div className="h-full w-full flex items-center justify-center text-ink/25 text-sm">
                   Pas de photo
