@@ -530,9 +530,7 @@ function VenueCard({
 }) {
   const s = STATUS_LABEL[v.status];
   const venueLike = isVenueLike(v.category);
-  const badge = venueLike
-    ? `${CATEGORY_LABEL[v.category]} · ${v.country === "IT" ? "Italie" : "France"}`
-    : CATEGORY_LABEL[v.category];
+  const badge = `${CATEGORY_LABEL[v.category]} · ${v.country === "IT" ? "Italie" : "France"}`;
 
   return (
     <div
@@ -766,8 +764,8 @@ function VenueModal({
                 <div>
                   <h2 className="text-2xl font-hand text-ink leading-tight">{v.name}</h2>
                   <p className="text-sm text-ink/50">
-                    {v.region ?? "Région inconnue"}
-                    {venueLike ? ` · ${v.country === "IT" ? "Italie" : "France"}` : ""}
+                    {v.region ?? "Région inconnue"} ·{" "}
+                    {v.country === "IT" ? "Italie" : "France"}
                   </p>
                 </div>
                 <button
