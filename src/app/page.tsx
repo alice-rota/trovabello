@@ -414,8 +414,8 @@ function AddForm({
         </span>
       </button>
       {open && (
-        <form onSubmit={submit} className="px-5 sm:px-6 pb-6 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
+        <form onSubmit={submit} className="px-5 sm:px-6 pb-5 grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sm:col-span-2 lg:col-span-3">
             <span className="text-ink/55 text-sm">
               Catégorie — 1. choisissez un groupe
             </span>
@@ -463,7 +463,7 @@ function AddForm({
                   key={c}
                   type="button"
                   onClick={() => setF({ ...f, country: c })}
-                  className={`rounded-md py-2 transition ${f.country === c ? "bg-wine text-paper" : "text-ink/60 hover:bg-paper-soft"}`}
+                  className={`rounded-md py-1.5 transition ${f.country === c ? "bg-wine text-paper" : "text-ink/60 hover:bg-paper-soft"}`}
                 >
                   {c === "FR" ? "France" : "Italie"}
                 </button>
@@ -473,11 +473,11 @@ function AddForm({
           <Field label="Contact (nom)" value={f.contactName} onChange={(v) => setF({ ...f, contactName: v })} />
           <Field label="Email de contact" type="email" value={f.contactEmail} onChange={(v) => setF({ ...f, contactEmail: v })} placeholder="contact@…" />
           <Field label="Téléphone" value={f.contactPhone} onChange={(v) => setF({ ...f, contactPhone: v })} />
-          <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+          <div className="sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
             <button
               type="submit"
               disabled={busy}
-              className="rounded-full bg-wine px-6 py-3 text-paper font-medium hover:bg-wine/90 disabled:opacity-50 transition"
+              className="rounded-full bg-wine px-6 py-2.5 text-paper font-medium hover:bg-wine/90 disabled:opacity-50 transition"
             >
               {busy ? "Recherche…" : "Créer la fiche"}
             </button>
@@ -513,7 +513,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-ink/25 px-3 py-2.5 bg-paper focus:border-wine focus:outline-none"
+        className="mt-1 w-full rounded-lg border border-ink/25 px-3 py-2 bg-paper focus:border-wine focus:outline-none"
       />
     </label>
   );
