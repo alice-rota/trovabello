@@ -7,7 +7,7 @@ const resend = process.env.RESEND_API_KEY
 
 // Adresse d'envoi (doit appartenir à un domaine vérifié sur Resend).
 // Le reply-to peut pointer vers une boîte qui alimente le webhook entrant.
-const FROM = process.env.EMAIL_FROM ?? "Mariage Tom & Nicole <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM ?? "Mariage Nicole et Tom <onboarding@resend.dev>";
 const REPLY_TO = process.env.EMAIL_REPLY_TO;
 
 export type SendInfoRequestArgs = {
@@ -42,7 +42,7 @@ ${questions}
 
 Un grand merci d'avance pour votre retour.
 Bien cordialement,
-Tom & Nicole
+Nicole et Tom
 
 - (Réf. ${a.venueId}) -`;
 

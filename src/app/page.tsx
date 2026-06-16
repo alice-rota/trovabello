@@ -338,9 +338,12 @@ function AddForm({
   defaultCategory: CategoryKey;
   onAdded: () => void;
 }) {
+  const groupOf = (cat: string) =>
+    CATEGORIES.find((c) => c.key === cat)?.group ?? CATEGORY_GROUPS[0];
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [group, setGroup] = useState<string>(groupOf(defaultCategory));
   const [f, setF] = useState({
     name: "",
     category: defaultCategory as string,
@@ -353,8 +356,17 @@ function AddForm({
 
   // Suit l'onglet actif tant qu'on n'a pas ouvert le formulaire
   useEffect(() => {
-    if (!open) setF((s) => ({ ...s, category: defaultCategory }));
+    if (!open) {
+      setF((s) => ({ ...s, category: defaultCategory }));
+      setGroup(groupOf(defaultCategory));
+    }
   }, [defaultCategory, open]);
+
+  function pickGroup(g: string) {
+    setGroup(g);
+    const first = CATEGORIES.find((c) => c.group === g);
+    if (first) setF((s) => ({ ...s, category: first.key }));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -395,7 +407,7 @@ function AddForm({
         className="w-full flex items-center justify-between px-5 sm:px-6 py-4"
       >
         <span className="text-base font-hand text-ink">
-          + Ajouter un prestataire
+          + Ajouter au planning
         </span>
         <span className="text-ink/40 text-xl leading-none">
           {open ? "−" : "+"}
@@ -403,25 +415,45 @@ function AddForm({
       </button>
       {open && (
         <form onSubmit={submit} className="px-5 sm:px-6 pb-6 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm sm:col-span-2">
-            <span className="text-ink/55">Catégorie</span>
-            <select
-              value={f.category}
-              onChange={(e) => setF({ ...f, category: e.target.value })}
-              className="mt-1 w-full rounded-lg border border-ink/25 px-3 py-2.5 bg-paper focus:border-wine focus:outline-none"
-            >
+          <div className="sm:col-span-2">
+            <span className="text-ink/55 text-sm">
+              Catégorie — 1. choisissez un groupe
+            </span>
+            <div className="mt-1.5 flex flex-wrap gap-2">
               {CATEGORY_GROUPS.map((g) => (
-                <optgroup key={g} label={g}>
-                  {CATEGORIES.filter((c) => c.group === g).map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.label}
-                    </option>
-                  ))}
-                </optgroup>
+                <button
+                  type="button"
+                  key={g}
+                  onClick={() => pickGroup(g)}
+                  className={`px-3.5 py-1.5 rounded-full border text-sm transition ${
+                    group === g
+                      ? "bg-ink text-paper border-ink"
+                      : "border-ink/20 text-ink/60 hover:bg-paper-soft"
+                  }`}
+                >
+                  {g}
+                </button>
               ))}
-            </select>
-          </label>
-          <Field label="Nom *" required value={f.name} onChange={(v) => setF({ ...f, name: v })} placeholder="Nom du prestataire…" />
+            </div>
+            <span className="mt-3 block text-ink/55 text-sm">2. puis la catégorie</span>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {CATEGORIES.filter((c) => c.group === group).map((c) => (
+                <button
+                  type="button"
+                  key={c.key}
+                  onClick={() => setF({ ...f, category: c.key })}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                    f.category === c.key
+                      ? "bg-wine text-paper border-wine"
+                      : "border-ink/20 text-ink/60 hover:bg-paper-soft"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Field label="Nom *" required value={f.name} onChange={(v) => setF({ ...f, name: v })} placeholder="Nom…" />
           <Field label="Site web" value={f.website} onChange={(v) => setF({ ...f, website: v })} placeholder="https://…" />
           <div className="text-sm">
             <span className="text-ink/55">Pays</span>
