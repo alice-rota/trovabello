@@ -1,5 +1,5 @@
 // Crée/synchronise les tables de la base au build, UNIQUEMENT sur Vercel
-// et seulement si une URL de base est présente. Sans ça (build local, ou
+// et seulement si une URL Postgres est présente. Sans ça (build local, ou
 // pas de base branchée), on ne fait rien : l'app tourne en mode démo.
 import { execSync } from "node:child_process";
 
@@ -8,15 +8,30 @@ if (!process.env.VERCEL) {
   process.exit(0);
 }
 
-const url =
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.POSTGRES_URL_NON_POOLING ||
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  "";
+// Cherche une URL Postgres quel que soit le nom de la variable (préfixe custom
+// possible). Préfère une connexion directe (sans "-pooler") pour le db push.
+const isPg = (v) => !!v && /^postgres(ql)?:\/\//.test(v);
+const known = [
+  process.env.DATABASE_URL_UNPOOLED,
+  process.env.POSTGRES_URL_NON_POOLING,
+  process.env.DATABASE_URL,
+  process.env.POSTGRES_URL,
+  process.env.POSTGRES_PRISMA_URL,
+];
+let url = known.find(isPg);
+if (!url) {
+  const all = Object.values(process.env).filter(isPg);
+  url = all.find((v) => !v.includes("-pooler")) || all[0];
+}
 
 if (!url) {
-  console.log("[db] Aucune URL de base — db push ignoré (mode démo).");
+  console.log("[db] Aucune URL Postgres trouvée — db push ignoré (mode démo).");
+  console.log(
+    "[db] Variables vues:",
+    Object.keys(process.env)
+      .filter((k) => /DATABASE|POSTGRES|PG|NEON/i.test(k))
+      .join(", ") || "(aucune)",
+  );
   process.exit(0);
 }
 
