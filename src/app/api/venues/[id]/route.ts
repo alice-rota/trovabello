@@ -1,5 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { DEMO_VENUES } from "@/lib/demo";
+
+// GET /api/venues/:id - fiche complète (emails + commentaires)
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  try {
+    const venue = await prisma.venue.findUnique({
+      where: { id },
+      include: {
+        emails: { orderBy: { createdAt: "asc" } },
+        comments: { orderBy: { createdAt: "asc" } },
+      },
+    });
+    if (!venue)
+      return NextResponse.json({ error: "introuvable" }, { status: 404 });
+    return NextResponse.json(venue);
+  } catch {
+    const demo = DEMO_VENUES.find((d) => d.id === id);
+    if (demo) return NextResponse.json(demo);
+    return NextResponse.json({ error: "introuvable" }, { status: 404 });
+  }
+}
 
 // PATCH /api/venues/:id - édition manuelle d'une fiche
 export async function PATCH(
@@ -16,7 +41,7 @@ export async function PATCH(
     "capacitySeated", "capacityStanding", "beds",
     "priceVenue", "pricePerNightPerGuest", "catererType",
     "catererPricePerGuest", "minSpend", "availabilityNotes",
-    "availableForDate", "exclusivity", "notes",
+    "availableForDate", "exclusivity", "notes", "isFavorite",
   ] as const;
 
   const data: Record<string, unknown> = {};

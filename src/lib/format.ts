@@ -1,7 +1,7 @@
 // Helpers partagés UI (client) - pas d'import serveur ici.
 export const COUNTRY_LABEL: Record<string, string> = {
-  FR: "🇫🇷 France",
-  IT: "🇮🇹 Italie",
+  FR: "France",
+  IT: "Italie",
 };
 
 export const STATUS_LABEL: Record<string, { label: string; color: string }> = {

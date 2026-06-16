@@ -27,7 +27,10 @@
       "Bash(gh auth *)",
       "Bash(vercel --version)",
       "Bash(git add *)",
-      "Bash(git -c 'user.name=Alice Rota' -c user.email=alice.rota@ask-it.ai commit -q -m 'Trovabello: comparateur de domaines de mariage \\(FR/IT\\) *)"
+      "Bash(git -c 'user.name=Alice Rota' -c user.email=alice.rota@ask-it.ai commit -q -m 'Trovabello: comparateur de domaines de mariage \\(FR/IT\\) *)",
+      "Bash(curl -s http://localhost:3000/api/venues/demo-1)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('name:',d['name']\\); print\\('emails:',len\\(d.get\\('emails',[]\\)\\)\\); print\\('comments:',len\\(d.get\\('comments',[]\\)\\)\\); print\\('fav:',d.get\\('isFavorite'\\)\\)\")",
+      "Bash(git -c 'user.name=Alice Rota' -c user.email=alice.rota@ask-it.ai commit -q -m 'Favoris, commentaires, fiche détaillée en pop-up, sélecteur pays *)"
     ]
   }
 }

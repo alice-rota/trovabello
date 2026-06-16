@@ -68,6 +68,10 @@ model Venue {
   sources     String? // d'où viennent les infos (URLs)
   extra       Json? // champs additionnels extraits par l'IA
 
+  // Favori + commentaires perso
+  isFavorite Boolean        @default(false)
+  comments   VenueComment[]
+
   // Suivi des emails
   emails        EmailMessage[]
   lastContacted DateTime?
@@ -93,4 +97,14 @@ model EmailMessage {
   providerId String? // id Resend / message-id
   parsed    Json? // résultat de l'analyse IA d'une réponse entrante
   createdAt DateTime       @default(now())
+}
+
+// Commentaire / note personnelle laissé sur un domaine
+model VenueComment {
+  id        String   @id @default(cuid())
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  venueId   String
+  body      String
+  author    String?
+  createdAt DateTime @default(now())
 }

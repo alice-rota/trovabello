@@ -11,7 +11,10 @@ export const maxDuration = 60;
 // Si aucune base n'est connectée → renvoie des fiches de démo (mode aperçu).
 export async function GET() {
   try {
-    const venues = await prisma.venue.findMany({ orderBy: { addedAt: "desc" } });
+    const venues = await prisma.venue.findMany({
+      orderBy: { addedAt: "desc" },
+      include: { comments: { orderBy: { createdAt: "asc" } } },
+    });
     return NextResponse.json(venues);
   } catch {
     return NextResponse.json(DEMO_VENUES);

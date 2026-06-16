@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { COUNTRY_LABEL, STATUS_LABEL, CATERER_LABEL, eur } from "@/lib/format";
 import { Dancers, BottleTable } from "@/components/illustrations";
 
@@ -26,6 +26,26 @@ type Venue = {
   availabilityNotes: string | null;
   exclusivity: boolean | null;
   notes: string | null;
+  isFavorite: boolean;
+  comments: Comment[];
+  emails?: Email[];
+};
+
+type Comment = {
+  id: string;
+  body: string;
+  author: string | null;
+  createdAt: string;
+};
+
+type Email = {
+  id: string;
+  direction: "OUTBOUND" | "INBOUND";
+  subject: string | null;
+  body: string | null;
+  fromAddr: string | null;
+  toAddr: string | null;
+  createdAt: string;
 };
 
 function estimate(v: Venue, guests: number, nights: number) {
@@ -56,6 +76,8 @@ export default function Home() {
   const [guests, setGuests] = useState(150);
   const [nights, setNights] = useState(2);
   const [view, setView] = useState<"cards" | "table">("cards");
+  const [favOnly, setFavOnly] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -74,12 +96,30 @@ export default function Home() {
   }, []);
 
   const byTotal = useMemo(() => {
-    return [...venues].sort((a, b) => {
+    const list = favOnly ? venues.filter((v) => v.isFavorite) : venues;
+    return [...list].sort((a, b) => {
       const ta = estimate(a, guests, nights).total ?? Infinity;
       const tb = estimate(b, guests, nights).total ?? Infinity;
       return ta - tb;
     });
-  }, [venues, guests, nights]);
+  }, [venues, guests, nights, favOnly]);
+
+  const favCount = useMemo(
+    () => venues.filter((v) => v.isFavorite).length,
+    [venues],
+  );
+
+  // Bascule favori (optimiste + persistance best-effort)
+  async function toggleFav(id: string, next: boolean) {
+    setVenues((vs) =>
+      vs.map((v) => (v.id === id ? { ...v, isFavorite: next } : v)),
+    );
+    await fetch(`/api/venues/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isFavorite: next }),
+    }).catch(() => {});
+  }
 
   const summary = useMemo(() => {
     const calc = (c: "FR" | "IT") => {
@@ -163,8 +203,8 @@ export default function Home() {
             <Stepper label="Invités" value={guests} setValue={setGuests} step={10} />
             <Stepper label="Nuits sur place" value={nights} setValue={setNights} step={1} />
           </div>
-          <CountryCard name="🇫🇷 France" data={summary.FR} />
-          <CountryCard name="🇮🇹 Italie" data={summary.IT} />
+          <CountryCard name="France" data={summary.FR} />
+          <CountryCard name="Italie" data={summary.IT} />
         </section>
 
         <div className="flex items-center gap-4">
@@ -173,19 +213,34 @@ export default function Home() {
             <h2 className="text-lg sm:text-xl font-hand text-ink">
               {venues.length} domaine{venues.length > 1 ? "s" : ""}
             </h2>
-            <div className="flex gap-1 rounded-lg border border-ink/15 p-1 text-sm">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setView("cards")}
-                className={`px-3 py-1 rounded-md transition ${view === "cards" ? "bg-ink text-paper" : "text-ink/50"}`}
+                onClick={() => setFavOnly((f) => !f)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm transition ${
+                  favOnly
+                    ? "border-wine bg-wine/10 text-wine"
+                    : "border-ink/15 text-ink/50 hover:bg-paper-soft"
+                }`}
+                title="N'afficher que les favoris"
               >
-                Fiches
+                <span>{favOnly ? "★" : "☆"}</span>
+                <span className="hidden sm:inline">Favoris</span>
+                {favCount > 0 && <span>({favCount})</span>}
               </button>
-              <button
-                onClick={() => setView("table")}
-                className={`px-3 py-1 rounded-md transition ${view === "table" ? "bg-ink text-paper" : "text-ink/50"}`}
-              >
-                Tableau
-              </button>
+              <div className="flex gap-1 rounded-lg border border-ink/15 p-1 text-sm">
+                <button
+                  onClick={() => setView("cards")}
+                  className={`px-3 py-1 rounded-md transition ${view === "cards" ? "bg-ink text-paper" : "text-ink/50"}`}
+                >
+                  Fiches
+                </button>
+                <button
+                  onClick={() => setView("table")}
+                  className={`px-3 py-1 rounded-md transition ${view === "table" ? "bg-ink text-paper" : "text-ink/50"}`}
+                >
+                  Tableau
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -199,6 +254,11 @@ export default function Home() {
               Aucun domaine pour l’instant. Ajoutez-en un ci-dessus.
             </p>
           </div>
+        ) : byTotal.length === 0 ? (
+          <p className="text-ink/40 text-center py-12">
+            Aucun favori pour l’instant. Cliquez sur l’étoile d’un domaine pour
+            l’ajouter.
+          </p>
         ) : view === "cards" ? (
           <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {byTotal.map((v) => (
@@ -207,14 +267,31 @@ export default function Home() {
                 v={v}
                 est={estimate(v, guests, nights)}
                 guests={guests}
-                onChange={load}
+                onToggleFav={toggleFav}
+                onOpen={() => setOpenId(v.id)}
               />
             ))}
           </div>
         ) : (
-          <ComparisonTable venues={byTotal} guests={guests} nights={nights} />
+          <ComparisonTable
+            venues={byTotal}
+            guests={guests}
+            nights={nights}
+            onOpen={setOpenId}
+          />
         )}
       </main>
+
+      {openId && (
+        <VenueModal
+          id={openId}
+          guests={guests}
+          nights={nights}
+          onClose={() => setOpenId(null)}
+          onChanged={load}
+          onToggleFav={toggleFav}
+        />
+      )}
     </div>
   );
 }
@@ -376,17 +453,25 @@ function AddForm({ onAdded }: { onAdded: () => void }) {
             onChange={(v) => setF({ ...f, website: v })}
             placeholder="https://…"
           />
-          <label className="text-sm">
+          <div className="text-sm">
             <span className="text-ink/55">Pays</span>
-            <select
-              value={f.country}
-              onChange={(e) => setF({ ...f, country: e.target.value })}
-              className="mt-1 w-full rounded-lg border border-ink/25 px-3 py-2.5 bg-paper focus:border-wine focus:outline-none"
-            >
-              <option value="FR">🇫🇷 France</option>
-              <option value="IT">🇮🇹 Italie</option>
-            </select>
-          </label>
+            <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-ink/25 p-1">
+              {(["FR", "IT"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setF({ ...f, country: c })}
+                  className={`rounded-md py-2 transition ${
+                    f.country === c
+                      ? "bg-wine text-paper"
+                      : "text-ink/60 hover:bg-paper-soft"
+                  }`}
+                >
+                  {c === "FR" ? "France" : "Italie"}
+                </button>
+              ))}
+            </div>
+          </div>
           <Field
             label="Contact (nom)"
             value={f.contactName}
@@ -454,34 +539,21 @@ function VenueCard({
   v,
   est,
   guests,
-  onChange,
+  onToggleFav,
+  onOpen,
 }: {
   v: Venue;
   est: { total: number | null; perGuest: number | null; incomplete: boolean };
   guests: number;
-  onChange: () => void;
+  onToggleFav: (id: string, next: boolean) => void;
+  onOpen: () => void;
 }) {
-  const [busy, setBusy] = useState<string | null>(null);
   const s = STATUS_LABEL[v.status];
-
-  async function act(path: string, body?: object) {
-    setBusy(path);
-    await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body ?? {}),
-    });
-    setBusy(null);
-    onChange();
-  }
-  async function del() {
-    if (!confirm(`Supprimer « ${v.name} » ?`)) return;
-    await fetch(`/api/venues/${v.id}`, { method: "DELETE" });
-    onChange();
-  }
-
   return (
-    <div className="rounded-xl border border-ink/15 overflow-hidden flex flex-col bg-paper">
+    <div
+      onClick={onOpen}
+      className="rounded-xl border border-ink/15 overflow-hidden flex flex-col bg-paper cursor-pointer hover:border-ink/30 hover:shadow-sm transition"
+    >
       <div className="h-44 bg-paper-soft relative">
         {v.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -500,7 +572,19 @@ function VenueCard({
         >
           {s.label}
         </span>
-        <span className="absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full bg-paper text-ink/70 border border-ink/15">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFav(v.id, !v.isFavorite);
+          }}
+          aria-label={v.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-paper/90 border border-ink/15 flex items-center justify-center text-lg leading-none hover:bg-paper"
+        >
+          <span className={v.isFavorite ? "text-wine" : "text-ink/30"}>
+            {v.isFavorite ? "★" : "☆"}
+          </span>
+        </button>
+        <span className="absolute bottom-3 left-3 text-xs px-2.5 py-1 rounded-full bg-paper text-ink/70 border border-ink/15">
           {COUNTRY_LABEL[v.country]}
         </span>
       </div>
@@ -518,12 +602,6 @@ function VenueCard({
           <Fact label="Traiteur / pers." value={eur(v.catererPricePerGuest)} />
         </dl>
 
-        {v.availabilityNotes && (
-          <p className="mt-3 text-xs text-ink/55 line-clamp-2">
-            Dispo : {v.availabilityNotes}
-          </p>
-        )}
-
         <div className="mt-4 rounded-lg border border-ink/15 bg-paper-soft/50 p-4 text-center">
           <p className="text-[11px] uppercase tracking-wide text-ink/40">
             Estimation · {guests} invités
@@ -538,39 +616,393 @@ function VenueCard({
           )}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2 text-sm">
-          <button
-            onClick={() => act(`/api/venues/${v.id}/enrich`)}
-            disabled={!!busy}
-            className="rounded-full border border-ink/25 px-3 py-2 hover:bg-paper-soft disabled:opacity-50"
-          >
-            {busy?.includes("enrich") ? "…" : "Re-chercher"}
-          </button>
-          <button
-            onClick={() => act(`/api/venues/${v.id}/email`, { guests })}
-            disabled={!!busy || !v.contactEmail}
-            title={v.contactEmail ?? "Aucun email de contact"}
-            className="rounded-full border border-wine/40 text-wine px-3 py-2 hover:bg-wine/5 disabled:opacity-40"
-          >
-            {busy?.includes("email") ? "…" : "Demander les infos"}
-          </button>
-          {v.website && (
-            <a
-              href={v.website}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full border border-ink/25 px-3 py-2 hover:bg-paper-soft"
-            >
-              Site
-            </a>
-          )}
-          <button
-            onClick={del}
-            className="ml-auto text-ink/40 hover:text-wine px-1"
-          >
-            Supprimer
-          </button>
-        </div>
+        <p className="mt-4 text-sm font-medium text-wine">Voir la fiche →</p>
+      </div>
+    </div>
+  );
+}
+
+function fmtDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function Step({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${ok ? "border-wine/30 bg-wine/5 text-ink/80" : "border-ink/15 text-ink/50"}`}
+    >
+      <span
+        className={`h-5 w-5 rounded-full flex items-center justify-center text-xs shrink-0 ${ok ? "bg-wine text-paper" : "bg-paper-soft text-ink/40 border border-ink/20"}`}
+      >
+        {ok ? "✓" : "·"}
+      </span>
+      <span>{label}</span>
+      <span className="ml-auto text-xs font-medium">{ok ? "Oui" : "Non"}</span>
+    </div>
+  );
+}
+
+function PriceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between px-4 py-2.5">
+      <span className="text-ink/55">{label}</span>
+      <span className="text-ink/80">{value}</span>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-xs uppercase tracking-wide text-ink/40 mb-2">
+      {children}
+    </h3>
+  );
+}
+
+function VenueModal({
+  id,
+  guests,
+  nights,
+  onClose,
+  onChanged,
+  onToggleFav,
+}: {
+  id: string;
+  guests: number;
+  nights: number;
+  onClose: () => void;
+  onChanged: () => void;
+  onToggleFav: (id: string, next: boolean) => void;
+}) {
+  const [v, setV] = useState<Venue | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [draft, setDraft] = useState("");
+
+  const reload = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/venues/${id}`);
+      const data = await r.json();
+      setV(data);
+      setComments(data.comments ?? []);
+    } catch {
+      setV(null);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  async function act(path: string, body?: object) {
+    setBusy(path);
+    await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    }).catch(() => {});
+    setBusy(null);
+    await reload();
+    onChanged();
+  }
+  async function del() {
+    if (!v || !confirm(`Supprimer « ${v.name} » ?`)) return;
+    await fetch(`/api/venues/${id}`, { method: "DELETE" }).catch(() => {});
+    onChanged();
+    onClose();
+  }
+  function toggleFav() {
+    if (!v) return;
+    const next = !v.isFavorite;
+    setV({ ...v, isFavorite: next });
+    onToggleFav(id, next);
+  }
+  async function addComment(e: React.FormEvent) {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    setDraft("");
+    const temp: Comment = {
+      id: `tmp-${comments.length}-${body.length}`,
+      body,
+      author: null,
+      createdAt: new Date().toISOString(),
+    };
+    setComments((c) => [...c, temp]);
+    try {
+      const r = await fetch(`/api/venues/${id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      const saved = await r.json();
+      if (saved?.id)
+        setComments((c) => c.map((x) => (x.id === temp.id ? saved : x)));
+    } catch {
+      /* mode démo : reste en local */
+    }
+  }
+  async function delComment(cid: string) {
+    setComments((c) => c.filter((x) => x.id !== cid));
+    await fetch(`/api/venues/${id}/comments/${cid}`, {
+      method: "DELETE",
+    }).catch(() => {});
+  }
+
+  const est = v ? estimate(v, guests, nights) : null;
+  const emails = v?.emails ?? [];
+  const sent = emails.some((e) => e.direction === "OUTBOUND");
+  const replied = emails.some((e) => e.direction === "INBOUND");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6">
+      <div
+        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative bg-paper rounded-2xl border border-ink/15 w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl">
+        <button
+          onClick={onClose}
+          aria-label="Fermer"
+          className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full bg-paper/90 border border-ink/15 flex items-center justify-center text-ink/60 hover:text-ink text-xl leading-none"
+        >
+          ×
+        </button>
+
+        {!v ? (
+          <div className="p-12 text-center text-ink/40">Chargement…</div>
+        ) : (
+          <>
+            <div className="h-48 bg-paper-soft relative">
+              {v.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={v.photoUrl}
+                  alt={v.name}
+                  className="h-full w-full object-cover sepia-[.12] saturate-[.85]"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-ink/25">
+                  <BottleTable className="w-32" />
+                </div>
+              )}
+              <span
+                className={`absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full ${STATUS_LABEL[v.status].color}`}
+              >
+                {STATUS_LABEL[v.status].label}
+              </span>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-hand text-ink leading-tight">
+                    {v.name}
+                  </h2>
+                  <p className="text-sm text-ink/50">
+                    {v.region ?? "Région inconnue"} · {COUNTRY_LABEL[v.country]}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleFav}
+                  aria-label="Favori"
+                  className="h-9 w-9 shrink-0 rounded-full border border-ink/15 flex items-center justify-center text-lg leading-none hover:bg-paper-soft"
+                >
+                  <span className={v.isFavorite ? "text-wine" : "text-ink/30"}>
+                    {v.isFavorite ? "★" : "☆"}
+                  </span>
+                </button>
+              </div>
+
+              <section>
+                <SectionTitle>Suivi</SectionTitle>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <Step label="Demande d'infos envoyée" ok={sent} />
+                  <Step label="Réponse reçue" ok={replied} />
+                </div>
+              </section>
+
+              <section>
+                <SectionTitle>
+                  Résumé du prix · {guests} invités, {nights} nuits
+                </SectionTitle>
+                <div className="rounded-xl border border-ink/15 divide-y divide-ink/10 text-sm">
+                  <PriceRow label="Location du lieu (week-end)" value={eur(v.priceVenue)} />
+                  <PriceRow
+                    label={`Hébergement (${guests} × ${nights} nuits)`}
+                    value={
+                      v.pricePerNightPerGuest != null
+                        ? eur(v.pricePerNightPerGuest * guests * nights)
+                        : "-"
+                    }
+                  />
+                  <PriceRow
+                    label={`Traiteur (${guests} couverts)`}
+                    value={
+                      v.catererPricePerGuest != null
+                        ? eur(v.catererPricePerGuest * guests)
+                        : "-"
+                    }
+                  />
+                  <div className="flex justify-between px-4 py-3 font-semibold">
+                    <span>Total estimé</span>
+                    <span className="text-wine text-lg">
+                      {est?.total != null ? eur(est.total) : "à compléter"}
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <SectionTitle>Détails</SectionTitle>
+                <dl className="grid grid-cols-2 gap-y-3 text-sm">
+                  <Fact label="Capacité assise" value={v.capacitySeated ? `${v.capacitySeated} pers.` : "-"} />
+                  <Fact label="Capacité debout" value={v.capacityStanding ? `${v.capacityStanding} pers.` : "-"} />
+                  <Fact label="Couchages" value={v.beds ? `${v.beds}` : "-"} />
+                  <Fact label="Traiteur" value={CATERER_LABEL[v.catererType]} />
+                  <Fact label="Minimum de dépense" value={eur(v.minSpend)} />
+                  <Fact label="Privatisation" value={v.exclusivity == null ? "-" : v.exclusivity ? "Oui" : "Non"} />
+                  <Fact label="Contact" value={v.contactName ?? "-"} />
+                  <Fact label="Email" value={v.contactEmail ?? "-"} />
+                  <Fact label="Téléphone" value={v.contactPhone ?? "-"} />
+                </dl>
+                {v.availabilityNotes && (
+                  <p className="mt-3 text-sm text-ink/70">
+                    <span className="text-ink/40">Disponibilités : </span>
+                    {v.availabilityNotes}
+                  </p>
+                )}
+                {v.notes && (
+                  <p className="mt-2 text-sm text-ink/70">
+                    <span className="text-ink/40">Notes : </span>
+                    {v.notes}
+                  </p>
+                )}
+              </section>
+
+              <section>
+                <SectionTitle>Emails ({emails.length})</SectionTitle>
+                {emails.length === 0 ? (
+                  <p className="text-sm text-ink/40">
+                    Aucun email pour l’instant. Utilisez « Demander les infos »
+                    ci-dessous.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {emails.map((e) => (
+                      <div
+                        key={e.id}
+                        className={`rounded-xl border p-3 text-sm ${e.direction === "OUTBOUND" ? "border-ink/15 bg-paper-soft/40" : "border-wine/30 bg-wine/5"}`}
+                      >
+                        <div className="flex justify-between gap-2 text-xs text-ink/45 mb-1">
+                          <span className="font-medium">
+                            {e.direction === "OUTBOUND" ? "Envoyé →" : "← Reçu"}
+                            {e.subject ? ` · ${e.subject}` : ""}
+                          </span>
+                          <span className="shrink-0">{fmtDate(e.createdAt)}</span>
+                        </div>
+                        <p className="text-ink/80 whitespace-pre-wrap">{e.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <SectionTitle>Commentaires</SectionTitle>
+                <div className="space-y-2">
+                  {comments.length === 0 && (
+                    <p className="text-sm text-ink/40">Aucun commentaire.</p>
+                  )}
+                  {comments.map((c) => (
+                    <div
+                      key={c.id}
+                      className="text-sm bg-paper-soft/60 rounded-lg px-3 py-2 flex justify-between gap-2"
+                    >
+                      <span className="text-ink/80">
+                        {c.author && (
+                          <strong className="text-ink/60">{c.author} : </strong>
+                        )}
+                        {c.body}
+                      </span>
+                      <button
+                        onClick={() => delComment(c.id)}
+                        aria-label="Supprimer le commentaire"
+                        className="text-ink/30 hover:text-wine shrink-0"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <form onSubmit={addComment} className="flex gap-2">
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      placeholder="Ajouter un commentaire…"
+                      className="flex-1 rounded-lg border border-ink/20 px-3 py-2 text-sm focus:border-wine focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-ink text-paper px-3 py-2 text-sm hover:bg-ink/90"
+                    >
+                      OK
+                    </button>
+                  </form>
+                </div>
+              </section>
+
+              <div className="flex flex-wrap gap-2 pt-4 border-t border-ink/10 text-sm">
+                <button
+                  onClick={() => act(`/api/venues/${id}/enrich`)}
+                  disabled={!!busy}
+                  className="rounded-full border border-ink/25 px-4 py-2 hover:bg-paper-soft disabled:opacity-50"
+                >
+                  {busy?.includes("enrich") ? "…" : "Re-chercher les infos"}
+                </button>
+                <button
+                  onClick={() => act(`/api/venues/${id}/email`, { guests })}
+                  disabled={!!busy || !v.contactEmail}
+                  title={v.contactEmail ?? "Aucun email de contact"}
+                  className="rounded-full border border-wine/40 text-wine px-4 py-2 hover:bg-wine/5 disabled:opacity-40"
+                >
+                  {busy?.includes("email") ? "…" : "Demander les infos par email"}
+                </button>
+                {v.website && (
+                  <a
+                    href={v.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-ink/25 px-4 py-2 hover:bg-paper-soft"
+                  >
+                    Voir le site
+                  </a>
+                )}
+                <button
+                  onClick={del}
+                  className="ml-auto text-ink/40 hover:text-wine px-2"
+                >
+                  Supprimer
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -589,10 +1021,12 @@ function ComparisonTable({
   venues,
   guests,
   nights,
+  onOpen,
 }: {
   venues: Venue[];
   guests: number;
   nights: number;
+  onOpen: (id: string) => void;
 }) {
   const cols: [string, (v: Venue) => string][] = [
     ["Pays", (v) => COUNTRY_LABEL[v.country]],
@@ -623,8 +1057,13 @@ function ComparisonTable({
           {venues.map((v) => {
             const e = estimate(v, guests, nights);
             return (
-              <tr key={v.id} className="border-b border-ink/10 last:border-0">
+              <tr
+                key={v.id}
+                onClick={() => onOpen(v.id)}
+                className="border-b border-ink/10 last:border-0 cursor-pointer hover:bg-paper-soft/60"
+              >
                 <td className="px-4 py-3 font-medium text-ink whitespace-nowrap">
+                  {v.isFavorite && <span className="text-wine">★ </span>}
                   {v.name}
                 </td>
                 {cols.map(([h, fn]) => (
