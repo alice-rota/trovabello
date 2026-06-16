@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💍 Domaines — Mariage de Tom & Nicole
 
-## Getting Started
+Comparateur de domaines de mariage en **France 🇫🇷** et **Italie 🇮🇹**.
 
-First, run the development server:
+Vous saisissez un domaine (nom, site, contact) → une fiche se crée et **se
+remplit toute seule** (photo, capacité, tarifs, traiteur, disponibilités) grâce
+à l'IA. Pour ce qui manque, un **email part automatiquement** vers le domaine, et
+**les réponses sont analysées** pour compléter la fiche. Un tableau compare tout
+et estime le **budget total** selon le nombre d'invités.
+
+## Stack
+
+- **Next.js 16** (App Router) + **React 19** + **Tailwind v4**
+- **Prisma 6** + **Postgres** (Neon via Vercel Marketplace)
+- **Vercel AI Gateway** (extraction + analyse des emails)
+- **Resend** (envoi des emails + webhook pour les réponses entrantes)
+- **Vercel Cron** (relance auto des domaines sans réponse)
+
+## Comment ça marche
+
+1. **Ajout** d'un domaine → `POST /api/venues`
+2. **Enrichissement IA** : lecture du site web + extraction structurée (`src/lib/enrich.ts`)
+3. **Champs manquants** détectés (`ESSENTIAL_FIELDS`) → bouton/email de demande
+4. **Email entrant** (réponse du domaine) → `POST /api/email/inbound` → analyse IA → fiche complétée
+5. **Relance** hebdo des non-répondants → `GET /api/cron/relance` (lundi 9h)
+
+## Démarrage local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env        # puis remplir les variables
+npm run db:push             # crée les tables dans la base Postgres
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Variables d'environnement (voir `.env.example`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Rôle | Sans elle… |
+|---|---|---|
+| `DATABASE_URL` | Postgres | l'app ne démarre pas |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | enrichissement IA (gratuit) | les fiches se créent mais ne se remplissent pas |
+| `RESEND_API_KEY` + `EMAIL_FROM` | envoi d'emails | bouton « Demander les infos » renvoie un aperçu sans envoyer |
+| `EMAIL_REPLY_TO` | réponses entrantes | pas d'analyse auto des réponses |
+| `CRON_SECRET` | protège le cron | — |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 💚 100% gratuit
 
-## Learn More
+Tout tient dans les paliers gratuits : **Vercel Hobby** (hébergement) ·
+**Neon** (Postgres 0,5 Go) · **Resend** (3 000 emails/mois) ·
+**Google Gemini** free tier (clé gratuite sans CB sur
+[aistudio.google.com/apikey](https://aistudio.google.com/apikey), 1 500
+requêtes/jour). Aucune carte bancaire requise.
 
-To learn more about Next.js, take a look at the following resources:
+## Déploiement (Vercel)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. `git push` sur le repo GitHub.
+2. Importer le repo sur Vercel.
+3. **Marketplace → Neon** : provisionne Postgres + injecte `DATABASE_URL`.
+4. Ajouter `GOOGLE_GENERATIVE_AI_API_KEY` (clé gratuite Google AI Studio).
+5. Ajouter `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`.
+6. Sur Resend : vérifier le domaine d'envoi + configurer **Inbound** vers
+   `https://<ton-app>.vercel.app/api/email/inbound`.
+7. Lancer `npm run db:push` (ou `prisma migrate deploy`) une fois la base prête.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ⚠️ À savoir
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- La **dispo** et les **tarifs exacts** ne sont presque jamais publics : l'IA
+  pré-remplit le public, le reste vient de la **boucle email**.
+- L'envoi d'emails est **manuel par défaut** (bouton par fiche). La relance auto
+  ne tourne qu'une fois le cron + Resend configurés. Vérifiez bien les contacts
+  avant d'écrire à de vrais domaines.

@@ -1,0 +1,96 @@
+// Schéma de la base — domaines de mariage à comparer (France 🇫🇷 / Italie 🇮🇹)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Country {
+  FR
+  IT
+}
+
+// Statut d'avancement de la collecte d'infos pour une fiche
+enum VenueStatus {
+  PENDING // créée, enrichissement IA en cours/à faire
+  ENRICHED // pré-rempli par l'IA depuis le web
+  CONTACTED // email envoyé au domaine pour les infos manquantes
+  REPLIED // le domaine a répondu, infos parsées
+  COMPLETE // toutes les infos clés sont là
+}
+
+// Type de traiteur proposé par le domaine
+enum CatererType {
+  INCLUDED // traiteur inclus / maison
+  IMPOSED // traiteur imposé (liste fermée)
+  FREE // traiteur libre
+  UNKNOWN
+}
+
+model Venue {
+  id          String      @id @default(cuid())
+  name        String
+  website     String?
+  country     Country     @default(FR)
+  region      String? // région / ville
+  status      VenueStatus @default(PENDING)
+
+  // Contact
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+
+  // Visuel
+  photoUrl String?
+
+  // Capacité
+  capacitySeated   Int? // nombre d'invités assis
+  capacityStanding Int? // capacité debout / cocktail
+  beds             Int? // nombre de couchages sur place
+
+  // Tarifs (en EUR)
+  priceVenue            Int? // location du lieu (week-end / privatisation)
+  pricePerNightPerGuest Int? // hébergement: nuitée par personne
+  catererType           CatererType @default(UNKNOWN)
+  catererPricePerGuest  Int? // prix traiteur par personne
+  minSpend              Int? // minimum de dépense imposé
+
+  // Disponibilité (texte libre + drapeau)
+  availabilityNotes String?
+  availableForDate  Boolean? // dispo pour la date cible ?
+
+  // Divers
+  exclusivity Boolean? // privatisation totale possible
+  notes       String? // remarques, avantages, contraintes
+  sources     String? // d'où viennent les infos (URLs)
+  extra       Json? // champs additionnels extraits par l'IA
+
+  // Suivi des emails
+  emails        EmailMessage[]
+  lastContacted DateTime?
+
+  createdAt DateTime @updatedAt @map("updated_at")
+  addedAt   DateTime @default(now())
+}
+
+enum EmailDirection {
+  OUTBOUND
+  INBOUND
+}
+
+model EmailMessage {
+  id        String         @id @default(cuid())
+  venue     Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  venueId   String
+  direction EmailDirection
+  subject   String?
+  body      String?
+  fromAddr  String?
+  toAddr    String?
+  providerId String? // id Resend / message-id
+  parsed    Json? // résultat de l'analyse IA d'une réponse entrante
+  createdAt DateTime       @default(now())
+}
