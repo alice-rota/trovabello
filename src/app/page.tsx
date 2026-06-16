@@ -416,36 +416,35 @@ function AddForm({
       {open && (
         <form onSubmit={submit} className="px-5 sm:px-6 pb-5 grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2 lg:col-span-3">
-            <span className="text-ink/55 text-sm">
-              Catégorie — 1. choisissez un groupe
-            </span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
+            <span className="text-ink/55 text-sm">Catégorie</span>
+            {/* groupes (filtre) */}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               {CATEGORY_GROUPS.map((g) => (
                 <button
                   type="button"
                   key={g}
                   onClick={() => pickGroup(g)}
-                  className={`px-3.5 py-1.5 rounded-full border text-sm transition ${
+                  className={`px-3 py-1 rounded-full text-xs transition ${
                     group === g
-                      ? "bg-ink text-paper border-ink"
-                      : "border-ink/20 text-ink/60 hover:bg-paper-soft"
+                      ? "bg-ink text-paper"
+                      : "bg-paper-soft text-ink/55 hover:bg-ink/10"
                   }`}
                 >
                   {g}
                 </button>
               ))}
             </div>
-            <span className="mt-3 block text-ink/55 text-sm">2. puis la catégorie</span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
+            {/* catégories du groupe (le choix) */}
+            <div className="mt-2 flex flex-wrap gap-2">
               {CATEGORIES.filter((c) => c.group === group).map((c) => (
                 <button
                   type="button"
                   key={c.key}
                   onClick={() => setF({ ...f, category: c.key })}
-                  className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                  className={`px-3.5 py-1.5 rounded-full border text-sm transition ${
                     f.category === c.key
                       ? "bg-wine text-paper border-wine"
-                      : "border-ink/20 text-ink/60 hover:bg-paper-soft"
+                      : "border-ink/20 text-ink/70 hover:bg-paper-soft"
                   }`}
                 >
                   {c.label}
@@ -455,21 +454,6 @@ function AddForm({
           </div>
           <Field label="Nom *" required value={f.name} onChange={(v) => setF({ ...f, name: v })} placeholder="Nom…" />
           <Field label="Site web" value={f.website} onChange={(v) => setF({ ...f, website: v })} placeholder="https://…" />
-          <div className="text-sm">
-            <span className="text-ink/55">Pays</span>
-            <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-ink/25 p-1">
-              {(["FR", "IT"] as const).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setF({ ...f, country: c })}
-                  className={`rounded-md py-1.5 transition ${f.country === c ? "bg-wine text-paper" : "text-ink/60 hover:bg-paper-soft"}`}
-                >
-                  {c === "FR" ? "France" : "Italie"}
-                </button>
-              ))}
-            </div>
-          </div>
           <Field label="Contact (nom)" value={f.contactName} onChange={(v) => setF({ ...f, contactName: v })} />
           <Field label="Email de contact" type="email" value={f.contactEmail} onChange={(v) => setF({ ...f, contactEmail: v })} placeholder="contact@…" />
           <Field label="Téléphone" value={f.contactPhone} onChange={(v) => setF({ ...f, contactPhone: v })} />
@@ -694,6 +678,16 @@ function VenueModal({
     setV({ ...v, isFavorite: next });
     onToggleFav(id, next);
   }
+  async function setCountry(c: "FR" | "IT") {
+    if (!v) return;
+    setV({ ...v, country: c });
+    await fetch(`/api/venues/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country: c }),
+    }).catch(() => {});
+    onChanged();
+  }
   async function addComment(e: React.FormEvent) {
     e.preventDefault();
     const body = draft.trim();
@@ -765,10 +759,21 @@ function VenueModal({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-hand text-ink leading-tight">{v.name}</h2>
-                  <p className="text-sm text-ink/50">
-                    {v.region ?? "Région inconnue"} ·{" "}
-                    {v.country === "IT" ? "Italie" : "France"}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2 text-sm text-ink/50">
+                    <span>{v.region ?? "Région inconnue"}</span>
+                    <span className="text-ink/30">·</span>
+                    <div className="inline-flex rounded-full border border-ink/15 overflow-hidden text-xs">
+                      {(["FR", "IT"] as const).map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setCountry(c)}
+                          className={`px-2.5 py-0.5 transition ${v.country === c ? "bg-wine text-paper" : "text-ink/55 hover:bg-paper-soft"}`}
+                        >
+                          {c === "FR" ? "France" : "Italie"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <button
                   onClick={toggleFav}
