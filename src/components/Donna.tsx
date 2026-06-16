@@ -70,7 +70,7 @@ export default function Donna() {
             {messages.length === 0 && (
               <div className="space-y-3">
                 <p className="text-ink/60">
-                  Coucou ! 🥂 Je connais tous tes prestataires. Pose-moi une
+                  Coucou ! Je connais tous tes prestataires. Pose-moi une
                   question :
                 </p>
                 <div className="flex flex-col gap-1.5">
@@ -122,14 +122,29 @@ export default function Donna() {
         </div>
       )}
 
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Donna, ta wedding planneuse"
-        className="fixed bottom-5 right-3 sm:right-6 z-50 h-16 w-16 rounded-full bg-paper border border-ink/15 shadow-lg flex items-center justify-center hover:shadow-xl hover:-translate-y-0.5 transition"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/illustrations/donna.png" alt="Donna" className="h-12 w-12 object-contain" />
-      </button>
+      <div className="fixed bottom-5 right-3 sm:right-6 z-50 flex items-center gap-2">
+        {!open && (
+          <button
+            onClick={() => setOpen(true)}
+            className="rounded-full bg-paper border border-ink/15 shadow px-4 py-2 text-sm text-ink/70 hover:text-ink max-w-[55vw] sm:max-w-none"
+          >
+            Une question ? Écrivez à{" "}
+            <span className="font-hand text-wine">Donna</span>
+          </button>
+        )}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-label="Donna, ta wedding planneuse"
+          className="h-16 w-16 shrink-0 rounded-full bg-paper border border-ink/15 shadow-lg flex items-center justify-center hover:shadow-xl transition"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/illustrations/donna.png"
+            alt="Donna"
+            className={`h-12 w-12 object-contain ${open ? "" : "donna-bounce"}`}
+          />
+        </button>
+      </div>
     </>
   );
 }

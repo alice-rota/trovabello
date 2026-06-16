@@ -29,7 +29,7 @@ export async function POST(req: Request) {
         `[${CATEGORY_LABEL[v.category as string] ?? v.category}]`,
         `${v.name}`,
         `(${v.country === "IT" ? "Italie" : "France"}${v.region ? `, ${v.region}` : ""})`,
-        v.isFavorite ? "⭐FAVORI" : "",
+        v.isFavorite ? "FAVORI" : "",
         `prix: ${v.price != null ? v.price + "€" : "non renseigné"}`,
         v.capacitySeated ? `${v.capacitySeated} invités` : "",
         v.beds ? `${v.beds} couchages` : "",
@@ -40,9 +40,9 @@ export async function POST(req: Request) {
     })
     .join("\n");
 
-  const system = `Tu es Donna, la wedding planneuse de Nicole et Tom — pétillante, chaleureuse, un brin pin-up vintage, avec de l'humour mais toujours pro. Tu les aides à organiser leur mariage à partir des prestataires enregistrés dans leur planning "Trovabello".
+  const system = `Tu es Donna, la wedding planneuse de Nicole et Tom — pétillante, chaleureuse, avec de l'humour mais toujours pro. Tu les aides à organiser leur mariage à partir des prestataires enregistrés dans leur planning "Trovabello".
 
-Réponds en français, de façon CONCISE et concrète. Appuie-toi UNIQUEMENT sur les données ci-dessous : compare les prix, fais des totaux/budgets, recommande, repère ce qui manque (catégories sans option, prix non renseignés, prestataires pas encore contactés). Si l'info n'est pas dans les données, dis-le simplement et propose une piste. N'invente jamais de chiffres.
+Réponds en français, de façon CONCISE et concrète. N'utilise JAMAIS d'emoji. Appuie-toi UNIQUEMENT sur les données ci-dessous : compare les prix, fais des totaux/budgets, recommande, repère ce qui manque (catégories sans option, prix non renseignés, prestataires pas encore contactés). Si l'info n'est pas dans les données, dis-le simplement et propose une piste. N'invente jamais de chiffres.
 
 PRESTATAIRES DU PLANNING (${venues.length}) :
 ${lines || "(aucun prestataire pour l'instant)"}`;
@@ -57,7 +57,7 @@ ${lines || "(aucun prestataire pour l'instant)"}`;
     return NextResponse.json({ reply: text });
   } catch (e) {
     return NextResponse.json({
-      reply: `Oups, je suis un peu débordée là 😅 (${friendlyAiError(e)})`,
+      reply: `Oups, je suis un peu débordée là (${friendlyAiError(e)})`,
       error: true,
     });
   }

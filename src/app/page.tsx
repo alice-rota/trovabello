@@ -589,6 +589,52 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MInput({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+}) {
+  return (
+    <label className="text-sm block">
+      <span className="text-ink/45 text-xs">{label}</span>
+      <input
+        type={type}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-0.5 w-full rounded-lg border border-ink/20 px-2.5 py-1.5 bg-paper focus:border-wine focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function MText({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="text-sm block">
+      <span className="text-ink/45 text-xs">{label}</span>
+      <textarea
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        className="mt-0.5 w-full rounded-lg border border-ink/20 px-2.5 py-1.5 bg-paper focus:border-wine focus:outline-none"
+      />
+    </label>
+  );
+}
+
 function fmtDate(iso: string) {
   try {
     return new Date(iso).toLocaleDateString("fr-FR", {
@@ -719,6 +765,110 @@ function VenueModal({
     await fetch(`/api/venues/${id}/comments/${cid}`, { method: "DELETE" }).catch(() => {});
   }
 
+  // ---- Édition manuelle de la fiche ----
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [ef, setEf] = useState<Record<string, string | boolean>>({});
+  const set = (k: string, val: string | boolean) =>
+    setEf((s) => ({ ...s, [k]: val }));
+
+  function startEdit() {
+    if (!v) return;
+    setEf({
+      name: v.name ?? "",
+      status: v.status,
+      price: v.price?.toString() ?? "",
+      region: v.region ?? "",
+      website: v.website ?? "",
+      contactName: v.contactName ?? "",
+      contactEmail: v.contactEmail ?? "",
+      contactPhone: v.contactPhone ?? "",
+      availabilityNotes: v.availabilityNotes ?? "",
+      notes: v.notes ?? "",
+      capacitySeated: v.capacitySeated?.toString() ?? "",
+      capacityStanding: v.capacityStanding?.toString() ?? "",
+      beds: v.beds?.toString() ?? "",
+      catererType: v.catererType ?? "UNKNOWN",
+      catererPricePerGuest: v.catererPricePerGuest?.toString() ?? "",
+      pricePerNightPerGuest: v.pricePerNightPerGuest?.toString() ?? "",
+      minSpend: v.minSpend?.toString() ?? "",
+      exclusivity: v.exclusivity ?? false,
+    });
+    setEditing(true);
+  }
+  async function saveEdit() {
+    if (!v) return;
+    setSaving(true);
+    const num = (x: unknown) => {
+      const t = String(x ?? "").replace(/[^\d.-]/g, "").trim();
+      return t === "" ? null : Number(t);
+    };
+    const str = (x: unknown) => {
+      const t = String(x ?? "").trim();
+      return t === "" ? null : t;
+    };
+    const payload: Record<string, unknown> = {
+      name: str(ef.name) ?? v.name,
+      status: ef.status,
+      price: num(ef.price),
+      region: str(ef.region),
+      website: str(ef.website),
+      contactName: str(ef.contactName),
+      contactEmail: str(ef.contactEmail),
+      contactPhone: str(ef.contactPhone),
+      availabilityNotes: str(ef.availabilityNotes),
+      notes: str(ef.notes),
+    };
+    if (isVenueLike(v.category)) {
+      Object.assign(payload, {
+        capacitySeated: num(ef.capacitySeated),
+        capacityStanding: num(ef.capacityStanding),
+        beds: num(ef.beds),
+        catererType: ef.catererType,
+        catererPricePerGuest: num(ef.catererPricePerGuest),
+        pricePerNightPerGuest: num(ef.pricePerNightPerGuest),
+        minSpend: num(ef.minSpend),
+        exclusivity: !!ef.exclusivity,
+      });
+    }
+    await fetch(`/api/venues/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+    setSaving(false);
+    setEditing(false);
+    await reload();
+    onChanged();
+  }
+
+  // ---- Emails ajoutés/supprimés à la main ----
+  const [emailForm, setEmailForm] = useState<{
+    open: boolean;
+    direction: "OUTBOUND" | "INBOUND";
+    subject: string;
+    body: string;
+  }>({ open: false, direction: "OUTBOUND", subject: "", body: "" });
+  async function addEmail() {
+    if (!emailForm.subject.trim() && !emailForm.body.trim()) return;
+    await fetch(`/api/venues/${id}/emails`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        direction: emailForm.direction,
+        subject: emailForm.subject,
+        body: emailForm.body,
+      }),
+    }).catch(() => {});
+    setEmailForm({ open: false, direction: "OUTBOUND", subject: "", body: "" });
+    await reload();
+    onChanged();
+  }
+  async function delEmail(eid: string) {
+    await fetch(`/api/venues/${id}/emails/${eid}`, { method: "DELETE" }).catch(() => {});
+    await reload();
+  }
+
   const emails = v?.emails ?? [];
   const sent = emails.some((e) => e.direction === "OUTBOUND");
   const replied = emails.some((e) => e.direction === "INBOUND");
@@ -778,23 +928,35 @@ function VenueModal({
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={toggleFav}
-                  aria-label="Favori"
-                  className="h-9 w-9 shrink-0 rounded-full border border-ink/15 flex items-center justify-center text-lg leading-none hover:bg-paper-soft"
-                >
-                  <span className={v.isFavorite ? "text-wine" : "text-ink/30"}>
-                    {v.isFavorite ? "★" : "☆"}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!editing && (
+                    <button
+                      onClick={startEdit}
+                      className="text-sm text-ink/55 hover:text-wine underline"
+                    >
+                      Modifier
+                    </button>
+                  )}
+                  <button
+                    onClick={toggleFav}
+                    aria-label="Favori"
+                    className="h-9 w-9 rounded-full border border-ink/15 flex items-center justify-center text-lg leading-none hover:bg-paper-soft"
+                  >
+                    <span className={v.isFavorite ? "text-wine" : "text-ink/30"}>
+                      {v.isFavorite ? "★" : "☆"}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              <div className="rounded-xl border border-ink/15 bg-paper-soft/40 px-4 py-3 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wide text-ink/40">Prix</span>
-                <span className="text-2xl font-semibold text-wine">
-                  {v.price != null ? eur(v.price) : "à compléter"}
-                </span>
-              </div>
+              {!editing && (
+                <div className="rounded-xl border border-ink/15 bg-paper-soft/40 px-4 py-3 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wide text-ink/40">Prix</span>
+                  <span className="text-2xl font-semibold text-wine">
+                    {v.price != null ? eur(v.price) : "à compléter"}
+                  </span>
+                </div>
+              )}
 
               <section>
                 <SectionTitle>Suivi</SectionTitle>
@@ -804,45 +966,157 @@ function VenueModal({
                 </div>
               </section>
 
-              <section>
-                <SectionTitle>Détails</SectionTitle>
-                <dl className="grid grid-cols-2 gap-y-3 text-sm">
-                  {venueLike && (
-                    <>
-                      <Fact label="Capacité assise" value={v.capacitySeated ? `${v.capacitySeated} pers.` : "-"} />
-                      <Fact label="Capacité debout" value={v.capacityStanding ? `${v.capacityStanding} pers.` : "-"} />
-                      <Fact label="Couchages" value={v.beds ? `${v.beds}` : "-"} />
-                      <Fact label="Traiteur" value={CATERER_LABEL[v.catererType]} />
-                      <Fact label="Traiteur / pers." value={eur(v.catererPricePerGuest)} />
-                      <Fact label="Nuit / pers." value={eur(v.pricePerNightPerGuest)} />
-                      <Fact label="Minimum de dépense" value={eur(v.minSpend)} />
-                      <Fact label="Privatisation" value={v.exclusivity == null ? "-" : v.exclusivity ? "Oui" : "Non"} />
-                    </>
+              {editing ? (
+                <section className="space-y-3">
+                  <SectionTitle>Modifier la fiche</SectionTitle>
+                  <div className="grid grid-cols-2 gap-3">
+                    <MInput label="Nom" value={ef.name as string} onChange={(x) => set("name", x)} />
+                    <label className="text-sm block">
+                      <span className="text-ink/45 text-xs">Statut</span>
+                      <select
+                        value={ef.status as string}
+                        onChange={(e) => set("status", e.target.value)}
+                        className="mt-0.5 w-full rounded-lg border border-ink/20 px-2.5 py-1.5 bg-paper focus:border-wine focus:outline-none"
+                      >
+                        {Object.entries(STATUS_LABEL).map(([k, val]) => (
+                          <option key={k} value={k}>{val.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <MInput label="Prix (€)" type="number" value={ef.price as string} onChange={(x) => set("price", x)} />
+                    <MInput label="Région" value={ef.region as string} onChange={(x) => set("region", x)} />
+                    <div className="col-span-2">
+                      <MInput label="Site web" value={ef.website as string} onChange={(x) => set("website", x)} />
+                    </div>
+                    <MInput label="Contact (nom)" value={ef.contactName as string} onChange={(x) => set("contactName", x)} />
+                    <MInput label="Email" value={ef.contactEmail as string} onChange={(x) => set("contactEmail", x)} />
+                    <MInput label="Téléphone" value={ef.contactPhone as string} onChange={(x) => set("contactPhone", x)} />
+                    {venueLike && (
+                      <>
+                        <MInput label="Capacité assise" type="number" value={ef.capacitySeated as string} onChange={(x) => set("capacitySeated", x)} />
+                        <MInput label="Capacité debout" type="number" value={ef.capacityStanding as string} onChange={(x) => set("capacityStanding", x)} />
+                        <MInput label="Couchages" type="number" value={ef.beds as string} onChange={(x) => set("beds", x)} />
+                        <label className="text-sm block">
+                          <span className="text-ink/45 text-xs">Traiteur</span>
+                          <select
+                            value={ef.catererType as string}
+                            onChange={(e) => set("catererType", e.target.value)}
+                            className="mt-0.5 w-full rounded-lg border border-ink/20 px-2.5 py-1.5 bg-paper focus:border-wine focus:outline-none"
+                          >
+                            <option value="UNKNOWN">—</option>
+                            <option value="INCLUDED">Inclus / maison</option>
+                            <option value="IMPOSED">Imposé</option>
+                            <option value="FREE">Libre</option>
+                          </select>
+                        </label>
+                        <MInput label="Traiteur / pers. (€)" type="number" value={ef.catererPricePerGuest as string} onChange={(x) => set("catererPricePerGuest", x)} />
+                        <MInput label="Nuit / pers. (€)" type="number" value={ef.pricePerNightPerGuest as string} onChange={(x) => set("pricePerNightPerGuest", x)} />
+                        <MInput label="Min. de dépense (€)" type="number" value={ef.minSpend as string} onChange={(x) => set("minSpend", x)} />
+                        <label className="text-sm flex items-center gap-2 mt-5">
+                          <input type="checkbox" checked={!!ef.exclusivity} onChange={(e) => set("exclusivity", e.target.checked)} />
+                          <span className="text-ink/70">Privatisation totale</span>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                  <MText label="Disponibilités" value={ef.availabilityNotes as string} onChange={(x) => set("availabilityNotes", x)} />
+                  <MText label="Notes" value={ef.notes as string} onChange={(x) => set("notes", x)} />
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={saveEdit} disabled={saving} className="rounded-full bg-wine text-paper px-5 py-2 text-sm hover:bg-wine/90 disabled:opacity-50">
+                      {saving ? "…" : "Enregistrer"}
+                    </button>
+                    <button onClick={() => setEditing(false)} className="rounded-full border border-ink/25 px-5 py-2 text-sm hover:bg-paper-soft">
+                      Annuler
+                    </button>
+                  </div>
+                </section>
+              ) : (
+                <section>
+                  <SectionTitle>Détails</SectionTitle>
+                  <dl className="grid grid-cols-2 gap-y-3 text-sm">
+                    {venueLike && (
+                      <>
+                        <Fact label="Capacité assise" value={v.capacitySeated ? `${v.capacitySeated} pers.` : "-"} />
+                        <Fact label="Capacité debout" value={v.capacityStanding ? `${v.capacityStanding} pers.` : "-"} />
+                        <Fact label="Couchages" value={v.beds ? `${v.beds}` : "-"} />
+                        <Fact label="Traiteur" value={CATERER_LABEL[v.catererType]} />
+                        <Fact label="Traiteur / pers." value={eur(v.catererPricePerGuest)} />
+                        <Fact label="Nuit / pers." value={eur(v.pricePerNightPerGuest)} />
+                        <Fact label="Minimum de dépense" value={eur(v.minSpend)} />
+                        <Fact label="Privatisation" value={v.exclusivity == null ? "-" : v.exclusivity ? "Oui" : "Non"} />
+                      </>
+                    )}
+                    <Fact label="Contact" value={v.contactName ?? "-"} />
+                    <Fact label="Email" value={v.contactEmail ?? "-"} />
+                    <Fact label="Téléphone" value={v.contactPhone ?? "-"} />
+                  </dl>
+                  {v.availabilityNotes && (
+                    <p className="mt-3 text-sm text-ink/70">
+                      <span className="text-ink/40">Disponibilités : </span>
+                      {v.availabilityNotes}
+                    </p>
                   )}
-                  <Fact label="Contact" value={v.contactName ?? "-"} />
-                  <Fact label="Email" value={v.contactEmail ?? "-"} />
-                  <Fact label="Téléphone" value={v.contactPhone ?? "-"} />
-                </dl>
-                {v.availabilityNotes && (
-                  <p className="mt-3 text-sm text-ink/70">
-                    <span className="text-ink/40">Disponibilités : </span>
-                    {v.availabilityNotes}
-                  </p>
-                )}
-                {v.notes && (
-                  <p className="mt-2 text-sm text-ink/70">
-                    <span className="text-ink/40">Notes : </span>
-                    {v.notes}
-                  </p>
-                )}
-              </section>
+                  {v.notes && (
+                    <p className="mt-2 text-sm text-ink/70">
+                      <span className="text-ink/40">Notes : </span>
+                      {v.notes}
+                    </p>
+                  )}
+                </section>
+              )}
 
               <section>
-                <SectionTitle>Emails ({emails.length})</SectionTitle>
+                <div className="flex items-center justify-between mb-2">
+                  <SectionTitle>Emails ({emails.length})</SectionTitle>
+                  <button
+                    onClick={() => setEmailForm((f) => ({ ...f, open: !f.open }))}
+                    className="text-xs text-wine hover:underline"
+                  >
+                    + Ajouter un email
+                  </button>
+                </div>
+                {emailForm.open && (
+                  <div className="rounded-xl border border-ink/15 p-3 mb-3 space-y-2">
+                    <div className="flex gap-1 rounded-lg border border-ink/20 p-1 text-sm w-max">
+                      {([
+                        ["OUTBOUND", "Envoyé"],
+                        ["INBOUND", "Reçu"],
+                      ] as const).map(([d, label]) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setEmailForm((f) => ({ ...f, direction: d }))}
+                          className={`px-3 py-1 rounded-md ${emailForm.direction === d ? "bg-ink text-paper" : "text-ink/55"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={emailForm.subject}
+                      onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))}
+                      placeholder="Objet (optionnel)"
+                      className="w-full rounded-lg border border-ink/20 px-3 py-2 text-sm focus:border-wine focus:outline-none"
+                    />
+                    <textarea
+                      value={emailForm.body}
+                      onChange={(e) => setEmailForm((f) => ({ ...f, body: e.target.value }))}
+                      placeholder="Contenu du mail…"
+                      rows={3}
+                      className="w-full rounded-lg border border-ink/20 px-3 py-2 text-sm focus:border-wine focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={addEmail} className="rounded-full bg-wine text-paper px-4 py-1.5 text-sm hover:bg-wine/90">
+                        Ajouter
+                      </button>
+                      <button onClick={() => setEmailForm((f) => ({ ...f, open: false }))} className="rounded-full border border-ink/25 px-4 py-1.5 text-sm hover:bg-paper-soft">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {emails.length === 0 ? (
-                  <p className="text-sm text-ink/40">
-                    Aucun email pour l’instant. Utilisez « Demander les infos ».
-                  </p>
+                  <p className="text-sm text-ink/40">Aucun email pour l’instant.</p>
                 ) : (
                   <div className="space-y-3">
                     {emails.map((e) => (
@@ -855,9 +1129,18 @@ function VenueModal({
                             {e.direction === "OUTBOUND" ? "Envoyé →" : "← Reçu"}
                             {e.subject ? ` · ${e.subject}` : ""}
                           </span>
-                          <span className="shrink-0">{fmtDate(e.createdAt)}</span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            {fmtDate(e.createdAt)}
+                            <button
+                              onClick={() => delEmail(e.id)}
+                              aria-label="Supprimer l'email"
+                              className="text-ink/30 hover:text-wine"
+                            >
+                              ×
+                            </button>
+                          </span>
                         </div>
-                        <p className="text-ink/80 whitespace-pre-wrap">{e.body}</p>
+                        {e.body && <p className="text-ink/80 whitespace-pre-wrap">{e.body}</p>}
                       </div>
                     ))}
                   </div>
