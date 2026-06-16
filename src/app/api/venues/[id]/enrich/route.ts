@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { enrichVenue } from "@/lib/enrich";
+import { enrichVenue, friendlyAiError } from "@/lib/enrich";
 import { factsToUpdate } from "@/lib/apply";
 import { missingEssentials } from "@/lib/schema";
 import { CATEGORY_LABEL } from "@/lib/categories";
@@ -36,9 +36,6 @@ export async function POST(
     });
     return NextResponse.json({ venue: updated, missing });
   } catch (e) {
-    return NextResponse.json(
-      { error: `Enrichissement indisponible: ${(e as Error).message}` },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: friendlyAiError(e) }, { status: 502 });
   }
 }

@@ -48,6 +48,15 @@ async function fetchOgImage(url: string): Promise<string | null> {
   }
 }
 
+// Message d'erreur lisible pour l'utilisateur (cache le pavé technique).
+export function friendlyAiError(e: unknown): string {
+  const msg = (e as Error)?.message ?? "";
+  if (/quota|rate.?limit|429|exceeded/i.test(msg))
+    return "Quota IA gratuit atteint — réessayez dans un moment, ou saisissez les infos à la main.";
+  if (/api.?key/i.test(msg)) return "Clé IA non configurée.";
+  return "Enrichissement IA momentanément indisponible.";
+}
+
 export type EnrichInput = {
   name: string;
   website?: string | null;
@@ -83,6 +92,7 @@ export async function enrichVenue(input: EnrichInput): Promise<VenueFacts> {
     model: MODEL,
     schema: VenueFactsSchema,
     prompt,
+    maxRetries: 1,
   });
 
   // Complète la photo avec og:image si l'IA n'a rien trouvé
@@ -112,6 +122,7 @@ export async function parseEmailReply(
     model: MODEL,
     schema: VenueFactsSchema,
     prompt,
+    maxRetries: 1,
   });
   return object;
 }

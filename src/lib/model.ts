@@ -11,7 +11,7 @@ import type { LanguageModel } from "ai";
 // Par défaut on utilise Gemini Flash : gratuit, rapide, bon en extraction.
 export function getModel(): LanguageModel {
   if (process.env.GOOGLE_GENERATIVE_AI_API_KEY || !process.env.AI_GATEWAY_API_KEY) {
-    return google(process.env.AI_MODEL ?? "gemini-2.0-flash");
+    return google(process.env.AI_MODEL ?? "gemini-2.0-flash-lite");
   }
   // Repli payant si on a explicitement choisi le Gateway
   return (process.env.AI_MODEL ?? "anthropic/claude-sonnet-4-6") as unknown as LanguageModel;

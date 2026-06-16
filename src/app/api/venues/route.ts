@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { enrichVenue } from "@/lib/enrich";
+import { enrichVenue, friendlyAiError } from "@/lib/enrich";
 import { factsToUpdate } from "@/lib/apply";
 import { missingEssentials } from "@/lib/schema";
 import { CATEGORY_LABEL } from "@/lib/categories";
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       venue,
       missing: [],
-      warning: `Enrichissement IA indisponible: ${(e as Error).message}`,
+      warning: friendlyAiError(e),
     });
   }
 }
